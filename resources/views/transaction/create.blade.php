@@ -108,16 +108,31 @@
                         </div>
                     </div>
 
-                     <!-- Row 2.5: Custom Package -->
+                     {{-- Row 2.5: Custom Package --}}
                     <div class="row mb-2" id="custom-package-row" style="display: none;">
                         <div class="col-md-12">
                             <label for="custom_package_id" class="form-label small">Pilih Custom Paket</label>
-                            <select class="form-control" id="custom_package_id" name="custom_package_id" onchange="loadCustomPackageDetails()">
-                                <option value="" selected disabled hidden>Pilih custom paket</option>
-                                @foreach ($customPackages as $package)
-                                    <option value="{{ $package->id }}" data-details="{{ json_encode($package) }}">{{ $package->nama_paket }} - Rp {{ number_format($package->harga_total, 0, ',', '.') }}</option>
-                                @endforeach
-                            </select>
+                            <div class="input-group">
+                                <select class="form-control" id="custom_package_id" name="custom_package_id" onchange="loadCustomPackageDetails()">
+                                    <option value="" selected disabled hidden>Pilih custom paket</option>
+                                    @foreach ($customPackages as $package)
+                                        <option value="{{ $package->id }}" data-details="{{ json_encode($package) }}">{{ $package->nama_paket }} - Rp {{ number_format($package->harga_total, 0, ',', '.') }}</option>
+                                    @endforeach
+                                </select>
+                                @if(auth()->user()->isOwner())
+                                    <div class="input-group-append">
+                                        <a href="{{ route('custom-package.index') }}" class="btn btn-outline-primary btn-sm" target="_blank" title="Kelola Custom Paket">
+                                            <i class="fas fa-cog"></i> Kelola
+                                        </a>
+                                    </div>
+                                @endif
+                            </div>
+                            <small class="text-muted">
+                                Pilih paket yang telah dibuat. 
+                                @if(auth()->user()->isOwner())
+                                    <a href="{{ route('custom-package.index') }}" target="_blank">Klik di sini</a> untuk mengelola custom paket.
+                                @endif
+                            </small>
                         </div>
                     </div>
 

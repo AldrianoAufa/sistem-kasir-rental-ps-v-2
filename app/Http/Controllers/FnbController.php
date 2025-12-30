@@ -55,6 +55,7 @@ class FnbController extends Controller
         $rules = [
             'nama' => 'required|string|max:255',
             'price_group_id' => 'required|exists:price_groups,id',
+            'harga_beli' => 'nullable|numeric|min:0',
             'stok_type' => 'required|in:limit,unlimit',
             'deskripsi' => 'nullable|string',
         ];
@@ -73,6 +74,11 @@ class FnbController extends Controller
         // Handle stok based on type
         if ($validatedData['stok_type'] === 'unlimit') {
             $validatedData['stok'] = -1; // Use -1 as marker for unlimited
+        }
+        
+        // Set harga_beli to 0 if not provided
+        if (!isset($validatedData['harga_beli']) || $validatedData['harga_beli'] === null) {
+            $validatedData['harga_beli'] = 0;
         }
         
         // Remove stok_type from validated data as it's not a database field
@@ -131,6 +137,7 @@ class FnbController extends Controller
         $rules = [
             'nama' => 'required|string|max:255',
             'price_group_id' => 'required|exists:price_groups,id',
+            'harga_beli' => 'nullable|numeric|min:0',
             'stok_type' => 'required|in:limit,unlimit',
             'deskripsi' => 'nullable|string',
         ];
@@ -151,9 +158,9 @@ class FnbController extends Controller
             $validatedData['stok'] = -1; // Use -1 as marker for unlimited
         }
         
-        // Keep existing harga_beli if it exists (for backward compatibility)
-        if (!isset($validatedData['harga_beli'])) {
-            $validatedData['harga_beli'] = $fnb->harga_beli;
+        // Set harga_beli to 0 if not provided
+        if (!isset($validatedData['harga_beli']) || $validatedData['harga_beli'] === null) {
+            $validatedData['harga_beli'] = 0;
         }
         
         // Remove stok_type from validated data as it's not a database field
@@ -195,6 +202,17 @@ class FnbController extends Controller
             case 'this_year':
                 $startDate = Carbon::now()->startOfYear();
                 $endDate = Carbon::now()->endOfYear();
+                break;
+            case 'specific_month':
+                $month = $request->get('month', date('n'));
+                $year = $request->get('month_year', date('Y'));
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+                break;
+            case 'specific_year':
+                $year = $request->get('year', date('Y'));
+                $startDate = Carbon::create($year, 1, 1)->startOfYear();
+                $endDate = Carbon::create($year, 12, 31)->endOfYear();
                 break;
             case 'custom':
                 $startDate = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->startOfMonth();
@@ -275,6 +293,17 @@ class FnbController extends Controller
                 $startDate = Carbon::now()->startOfYear();
                 $endDate = Carbon::now()->endOfYear();
                 break;
+            case 'specific_month':
+                $month = $request->get('month', date('n'));
+                $year = $request->get('month_year', date('Y'));
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+                break;
+            case 'specific_year':
+                $year = $request->get('year', date('Y'));
+                $startDate = Carbon::create($year, 1, 1)->startOfYear();
+                $endDate = Carbon::create($year, 12, 31)->endOfYear();
+                break;
             case 'custom':
                 $startDate = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->startOfMonth();
                 $endDate = $endDate ? Carbon::parse($endDate)->endOfDay() : Carbon::now()->endOfMonth();
@@ -320,6 +349,17 @@ class FnbController extends Controller
             case 'this_year':
                 $startDate = Carbon::now()->startOfYear();
                 $endDate = Carbon::now()->endOfYear();
+                break;
+            case 'specific_month':
+                $month = $request->get('month', date('n'));
+                $year = $request->get('month_year', date('Y'));
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+                break;
+            case 'specific_year':
+                $year = $request->get('year', date('Y'));
+                $startDate = Carbon::create($year, 1, 1)->startOfYear();
+                $endDate = Carbon::create($year, 12, 31)->endOfYear();
                 break;
             case 'custom':
                 $startDate = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->startOfMonth();

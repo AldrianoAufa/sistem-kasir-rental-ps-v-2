@@ -50,6 +50,13 @@
                 <i class="fas fa-gamepad"></i>
                 <span>Jenis Playstation</span></a>
         </li>
+        
+        <li class="nav-item {{ isset($active) && $active === 'custom-package' ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('custom-package.index') }}">
+                <i class="fas fa-box-open"></i>
+                <span>Custom Paket</span></a>
+        </li>
+        
         <li class="nav-item {{ isset($active) && $active === 'settings' ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('settings.index') }}">
                 <i class="fas fa-cogs"></i>
@@ -75,13 +82,6 @@
         </li>
     @endif
 
-    @if (auth()->user()->isAdmin())
-        <li class="nav-item {{ isset($active) && $active === 'custom-package' ? 'active' : '' }}">
-            <a class="nav-link" href="{{ route('custom-package.index') }}">
-                <i class="fas fa-box"></i>
-                <span>Custom Paket</span></a>
-        </li>
-    @endif
 
     @if (auth()->user()->isAdmin() || auth()->user()->isOwner())
         <li class="nav-item">
