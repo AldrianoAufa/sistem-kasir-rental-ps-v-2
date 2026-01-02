@@ -47,38 +47,50 @@ Route::middleware(['auth', 'check_role:admin,owner'])->group(function () {
     // Debug endpoint for device testing
     Route::get('/debug/devices', [App\Http\Controllers\DebugController::class, 'deviceDebug']);
     
-    // Transaction
-    Route::resource('/transaction', App\Http\Controllers\TransactionController::class);
-    Route::get('/transaction/{id}/payment', [App\Http\Controllers\TransactionController::class, 'showPayment'])->name('transaction.showPayment');
-    Route::post('/transaction/{id}/process-payment', [App\Http\Controllers\TransactionController::class, 'processPayment'])->name('transaction.processPayment');
-    Route::get('/transaction/{id}/print', [App\Http\Controllers\TransactionController::class, 'printReceipt'])->name('transaction.print');
-    Route::put('/transaction/{id}/update', 'App\Http\Controllers\TransactionController@updateStatus');
-    Route::post('/transaction/{id}/end', 'App\Http\Controllers\TransactionController@endTransaction')->name('transaction.end');
-    Route::get('/transaction/{id}/add-order', [App\Http\Controllers\TransactionController::class, 'addOrder'])->name('transaction.add-order');
-    Route::post('/transaction/{id}/store-order', [App\Http\Controllers\TransactionController::class, 'storeOrder'])->name('transaction.store-order');
+    // Transaction (with page access check)
+    Route::middleware(['check_page_access:transaction'])->group(function () {
+        Route::resource('/transaction', App\Http\Controllers\TransactionController::class);
+        Route::get('/transaction/{id}/payment', [App\Http\Controllers\TransactionController::class, 'showPayment'])->name('transaction.showPayment');
+        Route::post('/transaction/{id}/process-payment', [App\Http\Controllers\TransactionController::class, 'processPayment'])->name('transaction.processPayment');
+        Route::get('/transaction/{id}/print', [App\Http\Controllers\TransactionController::class, 'printReceipt'])->name('transaction.print');
+        Route::put('/transaction/{id}/update', 'App\Http\Controllers\TransactionController@updateStatus');
+        Route::post('/transaction/{id}/end', 'App\Http\Controllers\TransactionController@endTransaction')->name('transaction.end');
+        Route::get('/transaction/{id}/add-order', [App\Http\Controllers\TransactionController::class, 'addOrder'])->name('transaction.add-order');
+        Route::post('/transaction/{id}/store-order', [App\Http\Controllers\TransactionController::class, 'storeOrder'])->name('transaction.store-order');
+        
+        // FnB item update/delete routes
+        Route::put('/transaction/{id}/fnb/{fnbId}', [App\Http\Controllers\TransactionController::class, 'updateFnbItem'])->name('transaction.update-fnb');
+        Route::delete('/transaction/{id}/fnb/{fnbId}', [App\Http\Controllers\TransactionController::class, 'deleteFnbItem'])->name('transaction.delete-fnb');
+    });
 
-    // Device
-    Route::resource('/device', App\Http\Controllers\DeviceController::class);
-    Route::get('/device/by-playstation/{id}', [App\Http\Controllers\DeviceController::class, 'byPlaystation'])->name('device.byPlaystation');
-    Route::get('/booking/{id}/add', [App\Http\Controllers\DeviceController::class, 'bookingAdd']);
-    Route::get('/booking/{id}', [App\Http\Controllers\DeviceController::class, 'booking']);
+    // Device (with page access check)
+    Route::middleware(['check_page_access:device'])->group(function () {
+        Route::resource('/device', App\Http\Controllers\DeviceController::class);
+        Route::get('/device/by-playstation/{id}', [App\Http\Controllers\DeviceController::class, 'byPlaystation'])->name('device.byPlaystation');
+        Route::get('/booking/{id}/add', [App\Http\Controllers\DeviceController::class, 'bookingAdd']);
+        Route::get('/booking/{id}', [App\Http\Controllers\DeviceController::class, 'booking']);
+    });
 
-    // Expense (Kasir creates, Admin manages)
-    Route::resource('/expense', App\Http\Controllers\ExpenseController::class);
+    // Expense (with page access check)
+    Route::middleware(['check_page_access:expense'])->group(function () {
+        Route::resource('/expense', App\Http\Controllers\ExpenseController::class);
+    });
 });
 
 // Admin + Owner Routes
 Route::middleware(['auth', 'check_role:admin,owner'])->group(function () {
-    // Reports
-    Route::get('/report', 'App\Http\Controllers\ReportController@index')->name('report');
-    Route::get('/report/transaction', 'App\Http\Controllers\ReportController@transactionReport')->name('transaction.report');
-    Route::get('/generate-pdf', 'App\Http\Controllers\ReportController@generatePDF');
-    Route::get('/generate-excel', 'App\Http\Controllers\ReportController@generateExcel')->name('laporan.excel');
+    // Reports (with page access check)
+    Route::middleware(['check_page_access:report'])->group(function () {
+        Route::get('/report', 'App\Http\Controllers\ReportController@index')->name('report');
+        Route::get('/report/transaction', 'App\Http\Controllers\ReportController@transactionReport')->name('transaction.report');
+        Route::get('/generate-pdf', 'App\Http\Controllers\ReportController@generatePDF');
+        Route::get('/generate-excel', 'App\Http\Controllers\ReportController@generateExcel')->name('laporan.excel');
 
-    // FnB Reports
-    Route::get('/fnb/laporan-penjualan', [App\Http\Controllers\FnbController::class, 'laporanPenjualan'])->name('fnb.laporan');
-    Route::get('/fnb/laporan-penjualan/excel', [App\Http\Controllers\FnbController::class, 'exportExcel'])->name('fnb.laporan.excel');
-    Route::get('/fnb/laporan-penjualan/pdf', [App\Http\Controllers\FnbController::class, 'exportPdf'])->name('fnb.laporan.pdf');
+        // FnB Reports
+        Route::get('/fnb/laporan-penjualan', [App\Http\Controllers\FnbController::class, 'laporanPenjualan'])->name('fnb.laporan');
+        Route::get('/fnb/laporan-penjualan/excel', [App\Http\Controllers\FnbController::class, 'exportExcel'])->name('fnb.laporan.excel');
+        Route::get('/fnb/laporan-penjualan/pdf', [App\Http\Controllers\FnbController::class, 'exportPdf'])->name('fnb.laporan.pdf');
+    });
 });
 
 // Owner Only Routes (Full Management)
@@ -124,8 +136,10 @@ Route::middleware(['auth', 'check_role:owner'])->group(function () {
 
 // Admin + Owner Routes (View Stock)
 Route::middleware(['auth', 'check_role:admin,owner'])->group(function () {
-    // Stock View (Read-only for admin)
-    Route::get('/stock', [App\Http\Controllers\StockController::class, 'index'])->name('stock.index');
-    Route::get('/stock/{id}/history', [App\Http\Controllers\StockController::class, 'history'])->name('stock.history');
+    // Stock View (Read-only for admin, with page access check)
+    Route::middleware(['check_page_access:stock'])->group(function () {
+        Route::get('/stock', [App\Http\Controllers\StockController::class, 'index'])->name('stock.index');
+        Route::get('/stock/{id}/history', [App\Http\Controllers\StockController::class, 'history'])->name('stock.history');
+    });
 });
 

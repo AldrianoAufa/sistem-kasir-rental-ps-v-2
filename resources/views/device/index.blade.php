@@ -71,8 +71,10 @@
                     aria-haspopup="true" aria-expanded="false">
                 </a>
 
-                @if (auth()->user()->role === 'admin')
-                    <a href="{{ route('device.create') }}" class="btn btn-primary btn-sm">Tambah Data</a>
+                @if (auth()->user()->isOwner() || auth()->user()->isAdmin())
+                    <a href="{{ route('device.create') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Tambah Perangkat
+                    </a>
                 @endif
             </div>
         </div>
@@ -154,7 +156,7 @@
                                         </button>
                                     @endif
 
-                                    @if (auth()->user()->role === 'admin' || auth()->user()->role === 'kasir')
+                                    @if (auth()->user()->isOwner() || auth()->user()->isAdmin() || auth()->user()->role === 'kasir')
                                         @if (isset($customers[$device->id]) && $customers[$device->id]['tipe_transaksi'] === 'postpaid' && $customers[$device->id]['status_transaksi'] === 'berjalan')
                                             <button type="button" class="btn btn-sm btn-success" 
                                                 data-bs-toggle="modal" 

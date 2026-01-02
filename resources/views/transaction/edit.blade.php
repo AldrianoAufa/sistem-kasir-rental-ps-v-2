@@ -177,19 +177,75 @@
 
                         <hr>
 
-                        <div class="alert alert-primary">
-                            <h6 class="mb-2"><i class="fas fa-utensils"></i> Informasi FnB</h6>
-                            @if($transaction->transactionFnbs->isEmpty())
-                                <p class="mb-0">Tidak ada FnB dalam transaksi ini</p>
-                            @else
-                                <ul class="mb-0">
-                                    @foreach($transaction->transactionFnbs as $fnbItem)
-                                        <li>{{ $fnbItem->fnb->nama }} - {{ $fnbItem->qty }} x Rp {{ number_format($fnbItem->harga_jual, 0, ',', '.') }}</li>
-                                    @endforeach
-                                </ul>
-                                <p class="mb-0 mt-2"><strong>Total FnB:</strong> Rp {{ number_format($transaction->getFnbTotalAttribute(), 0, ',', '.') }}</p>
-                            @endif
-                            <small class="text-muted d-block mt-2">Untuk mengubah FnB, gunakan fitur "Tambah Pesanan" di halaman transaksi</small>
+                        <div class="card mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0"><i class="fas fa-utensils"></i> Kelola FnB</h6>
+                                <a href="{{ route('transaction.add-order', $transaction->id_transaksi) }}" class="btn btn-sm btn-success">
+                                    <i class="fas fa-plus"></i> Tambah FnB
+                                </a>
+                            </div>
+                            <div class="card-body">
+                                @if($transaction->transactionFnbs->isEmpty())
+                                    <div class="text-center py-3">
+                                        <i class="fas fa-utensils fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted mb-0">Tidak ada FnB dalam transaksi ini</p>
+                                    </div>
+                                @else
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-hover mb-0">
+                                            <thead class="thead-light">
+                                                <tr>
+                                                    <th>Nama FnB</th>
+                                                    <th width="100">Jumlah</th>
+                                                    <th>Harga Satuan</th>
+                                                    <th>Total</th>
+                                                    <th width="120">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($transaction->transactionFnbs as $fnbItem)
+                                                    <tr>
+                                                        <td>{{ $fnbItem->fnb->nama }}</td>
+                                                        <td class="text-center">{{ $fnbItem->qty }}</td>
+                                                        <td>Rp {{ number_format($fnbItem->harga_jual, 0, ',', '.') }}</td>
+                                                        <td>Rp {{ number_format($fnbItem->qty * $fnbItem->harga_jual, 0, ',', '.') }}</td>
+                                                        <td class="text-center">
+                                                            <div class="btn-group" role="group">
+                                                                <button type="button" class="btn btn-sm btn-warning" 
+                                                                    data-bs-toggle="modal" 
+                                                                    data-bs-target="#editFnbModal"
+                                                                    data-fnb-id="{{ $fnbItem->id }}"
+                                                                    data-fnb-name="{{ $fnbItem->fnb->nama }}"
+                                                                    data-fnb-qty="{{ $fnbItem->qty }}"
+                                                                    data-transaction-id="{{ $transaction->id_transaksi }}"
+                                                                    title="Edit Jumlah">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </button>
+                                                                <form action="{{ route('transaction.delete-fnb', ['id' => $transaction->id_transaksi, 'fnbId' => $fnbItem->id]) }}" 
+                                                                      method="POST" 
+                                                                      class="d-inline"
+                                                                      onsubmit="return confirm('Apakah Anda yakin ingin menghapus {{ $fnbItem->fnb->nama }} dari transaksi?')">
+                                                                    @csrf
+                                                                    @method('DELETE')
+                                                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                </form>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                            <tfoot>
+                                                <tr class="table-info">
+                                                    <td colspan="3" class="text-right"><strong>Total FnB:</strong></td>
+                                                    <td colspan="2"><strong>Rp {{ number_format($transaction->getFnbTotalAttribute(), 0, ',', '.') }}</strong></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                @endif
+                            </div>
                         </div>
 
                         <div class="form-group mt-4">
@@ -472,4 +528,53 @@ document.addEventListener('DOMContentLoaded', function() {
     50% { opacity: 0.6; }
 }
 </style>
+
+<!-- Edit FnB Modal -->
+<div class="modal fade" id="editFnbModal" tabindex="-1" aria-labelledby="editFnbModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editFnbModalLabel">Edit Jumlah FnB</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editFnbForm" method="POST" action="">
+                @csrf
+                @method('PUT')
+                <div class="modal-body">
+                    <p><strong>FnB:</strong> <span id="edit-fnb-name"></span></p>
+                    <div class="form-group">
+                        <label for="edit-fnb-qty">Jumlah Baru</label>
+                        <input type="number" class="form-control" id="edit-fnb-qty" name="qty" min="1" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Simpan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Edit FnB Modal Handler
+    var editFnbModal = document.getElementById('editFnbModal');
+    if (editFnbModal) {
+        editFnbModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var fnbId = button.getAttribute('data-fnb-id');
+            var fnbName = button.getAttribute('data-fnb-name');
+            var fnbQty = button.getAttribute('data-fnb-qty');
+            var transactionId = button.getAttribute('data-transaction-id');
+
+            document.getElementById('edit-fnb-name').textContent = fnbName;
+            document.getElementById('edit-fnb-qty').value = fnbQty;
+            
+            var form = document.getElementById('editFnbForm');
+            form.action = '/transaction/' + transactionId + '/fnb/' + fnbId;
+        });
+    }
+</script>
 @endsection

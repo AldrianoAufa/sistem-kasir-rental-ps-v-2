@@ -34,6 +34,8 @@
                                     Paket
                                 @elseif($transaction->tipe_transaksi === 'custom_package')
                                     Custom Paket
+                                @elseif($transaction->tipe_transaksi === 'fnb_only')
+                                    <span class="badge badge-success"><i class="fas fa-utensils"></i> FnB Saja</span>
                                 @else
                                     Lost Time
                                 @endif
@@ -51,6 +53,7 @@
                         @endif
                     </table>
                 </div>
+                @if($transaction->tipe_transaksi !== 'fnb_only')
                 <div class="col-md-6">
                     <h6>Informasi Perangkat</h6>
                     <table class="table table-borderless">
@@ -64,6 +67,7 @@
                         </tr>
                     </table>
                 </div>
+                @endif
             </div>
 
             @if($transaction->tipe_transaksi === 'custom_package' && $transaction->custom_package)
@@ -108,6 +112,7 @@
 
             <hr>
 
+            @if($transaction->tipe_transaksi !== 'fnb_only')
             <div class="row">
                 <div class="col-md-6">
                     <h6>Waktu Bermain</h6>
@@ -185,6 +190,28 @@
                     </table>
                 </div>
             </div>
+            @else
+            {{-- FnB Only: Show only FnB biaya --}}
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Biaya</h6>
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>Total FnB:</strong></td>
+                            <td>Rp {{ number_format($transaction->getFnbTotalAttribute(), 0, ',', '.') }}</td>
+                        </tr>
+                        <tr id="discount-row-fnb" style="display: none;">
+                            <td class="text-warning"><strong>Diskon:</strong></td>
+                            <td class="text-warning"><strong>-Rp <span id="discount-display">0</span></strong></td>
+                        </tr>
+                        <tr class="bg-success">
+                            <td class="text-white font-weight-bold"><h5>Total Biaya:</h5></td>
+                            <td class="text-white font-weight-bold"><h5>Rp <span id="total-display">{{ number_format($transaction->total, 0, ',', '.') }}</span></h5></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            @endif
 
             @if($transaction->transactionFnbs->isNotEmpty())
                 <hr>
@@ -398,12 +425,12 @@
         }
         
         // Update discount row in transaction details
-        const discountRow = document.getElementById('discount-row');
+        const discountRow = document.getElementById('discount-row') || document.getElementById('discount-row-fnb');
         const discountDisplay = document.getElementById('discount-display');
         const totalDisplay = document.getElementById('total-display');
         
         if (discountPsPercentage > 0 || discountFnbPercentage > 0) {
-            discountRow.style.display = 'table-row';
+            if (discountRow) discountRow.style.display = 'table-row';
             let discountText = '';
             if (discountPsPercentage > 0) {
                 discountText += 'PS: ' + discountPsPercentage + '% (-Rp ' + new Intl.NumberFormat('id-ID').format(discountPsAmount) + ')';
@@ -412,11 +439,11 @@
                 if (discountText) discountText += ' | ';
                 discountText += 'FnB: ' + discountFnbPercentage + '% (-Rp ' + new Intl.NumberFormat('id-ID').format(discountFnbAmount) + ')';
             }
-            discountDisplay.textContent = discountText;
-            totalDisplay.textContent = new Intl.NumberFormat('id-ID').format(finalTotal);
+            if (discountDisplay) discountDisplay.textContent = discountText;
+            if (totalDisplay) totalDisplay.textContent = new Intl.NumberFormat('id-ID').format(finalTotal);
         } else {
-            discountRow.style.display = 'none';
-            totalDisplay.textContent = new Intl.NumberFormat('id-ID').format(originalTotal);
+            if (discountRow) discountRow.style.display = 'none';
+            if (totalDisplay) totalDisplay.textContent = new Intl.NumberFormat('id-ID').format(originalTotal);
         }
         
         // Update amount paid minimum

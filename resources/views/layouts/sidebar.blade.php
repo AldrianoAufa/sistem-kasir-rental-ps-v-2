@@ -1,5 +1,24 @@
 <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
 
+    @php
+        // Get admin permissions for sidebar display
+        $pagePermissions = [];
+        if (auth()->user()->isAdmin()) {
+            $pagePermissions = \App\Models\PagePermission::getAllPermissions();
+        }
+        
+        // Helper function to check if admin can access a page
+        $canAccess = function($pageKey) use ($pagePermissions) {
+            // Owner always has access
+            if (auth()->user()->isOwner()) return true;
+            // Admin checks permission
+            if (auth()->user()->isAdmin()) {
+                return $pagePermissions[$pageKey] ?? true; // Default to true if not found
+            }
+            return true;
+        };
+    @endphp
+
     <!-- Sidebar - Brand -->
     <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ route('home') }}">
         <div class="sidebar-brand-icon rotate-n-15">
@@ -69,21 +88,29 @@
             Operasional
         </div>
 
+        @if($canAccess('device'))
         <li class="nav-item {{ isset($active) && $active === 'device' ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('device.index') }}">
                 <i class="fas fa-tv"></i>
                 <span>Data Perangkat</span></a>
         </li>
+        @endif
 
+        @if($canAccess('transaction'))
         <li class="nav-item {{ isset($active) && $active === 'transaction' ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('transaction.index') }}">
                 <i class="fas fa-shopping-cart"></i>
                 <span>Transaksi</span></a>
         </li>
+        @endif
     @endif
 
 
     @if (auth()->user()->isAdmin() || auth()->user()->isOwner())
+        @php
+            $showFnbMenu = auth()->user()->isOwner() || $canAccess('stock') || $canAccess('report');
+        @endphp
+        @if($showFnbMenu)
         <li class="nav-item">
             <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseFnb"
                 aria-expanded="true" aria-controls="collapseFnb">
@@ -97,16 +124,20 @@
                         <a class="collapse-item {{ isset($active) && $active === 'fnb' ? 'active' : '' }}" href="{{ route('fnb.index') }}">Kelola Barang</a>
                         <a class="collapse-item {{ isset($active) && $active === 'price-group' ? 'active' : '' }}" href="{{ route('price-group.index') }}">Kelompok Harga</a>
                         <a class="collapse-item {{ isset($active) && $active === 'stock' ? 'active' : '' }}" href="{{ route('stock.index') }}">Manajemen Stok</a>
-                    @elseif(auth()->user()->isAdmin())
+                    @elseif(auth()->user()->isAdmin() && $canAccess('stock'))
                         <a class="collapse-item {{ isset($active) && $active === 'stock' ? 'active' : '' }}" href="{{ route('stock.index') }}">Lihat Stok</a>
                     @endif
-                    <a class="collapse-item {{ isset($active) && $active === 'fnb-laporan' ? 'active' : '' }}" href="{{ route('fnb.laporan') }}">Laporan Penjualan</a>
+                    @if(auth()->user()->isOwner() || $canAccess('report'))
+                        <a class="collapse-item {{ isset($active) && $active === 'fnb-laporan' ? 'active' : '' }}" href="{{ route('fnb.laporan') }}">Laporan Penjualan</a>
+                    @endif
                 </div>
             </div>
         </li>
+        @endif
     @endif
 
     @if (auth()->user()->isAdmin() || auth()->user()->isOwner())
+        @if(auth()->user()->isOwner() || $canAccess('expense'))
         <li class="nav-item">
             <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseExpense"
                 aria-expanded="true" aria-controls="collapseExpense">
@@ -123,9 +154,11 @@
                 </div>
             </div>
         </li>
+        @endif
     @endif
 
     @if (auth()->user()->isAdmin() || auth()->user()->isOwner())
+        @if(auth()->user()->isOwner() || $canAccess('report'))
         <!-- Heading -->
         <div class="sidebar-heading">
             Laporan
@@ -136,6 +169,7 @@
                 <i class="fas fa-fw fa-chart-area"></i>
                 <span>Laporan Penjualan</span></a>
         </li>
+        @endif
     @endif
 
     <!-- Divider -->
@@ -149,3 +183,4 @@
     </div>
 
 </ul>
+

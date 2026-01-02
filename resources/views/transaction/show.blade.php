@@ -44,7 +44,17 @@
                                 </tr>
                                 <tr>
                                     <td><strong>Tipe Transaksi:</strong></td>
-                                   <td>{{ $transaction->tipe_transaksi === 'prepaid' ? 'Paket' : 'Lost Time' }}</td>
+                                    <td>
+                                        @if($transaction->tipe_transaksi === 'prepaid')
+                                            Paket
+                                        @elseif($transaction->tipe_transaksi === 'custom_package')
+                                            Custom Paket
+                                        @elseif($transaction->tipe_transaksi === 'fnb_only')
+                                            <span class="badge badge-success"><i class="fas fa-utensils"></i> FnB Saja</span>
+                                        @else
+                                            Lost Time
+                                        @endif
+                                    </td>
                                 </tr>
                                 
                                 <tr>
@@ -53,6 +63,7 @@
                                 </tr>
                             </table>
                         </div>
+                        @if($transaction->tipe_transaksi !== 'fnb_only')
                         <div class="col-md-6">
                             <h5>Informasi Perangkat</h5>
                             <table class="table table-borderless">
@@ -67,10 +78,12 @@
                                
                             </table>
                         </div>
+                        @endif
                     </div>
 
                     <hr>
 
+                    @if($transaction->tipe_transaksi !== 'fnb_only')
                     <div class="row">
                         <div class="col-md-6">
                             <h5>Waktu Bermain</h5>
@@ -154,10 +167,18 @@
                             </table>
                         </div>
                     </div>
+                    @endif
 
                     @if($transaction->transactionFnbs->isNotEmpty())
                         <hr>
-                        <h5>Detail FnB</h5>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Detail FnB</h5>
+                            @if($transaction->payment_status === 'unpaid')
+                                <a href="{{ route('transaction.edit', $transaction->id_transaksi) }}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i> Edit FnB
+                                </a>
+                            @endif
+                        </div>
                         <div class="table-responsive">
                             <table class="table">
                                 <thead>
@@ -212,6 +233,16 @@
                                 </tbody>
                             </table>
                         </div>
+                    @else
+                        @if($transaction->payment_status === 'unpaid')
+                            <hr>
+                            <div class="text-center py-3">
+                                <p class="text-muted mb-2">Belum ada FnB dalam transaksi ini</p>
+                                <a href="{{ route('transaction.edit', $transaction->id_transaksi) }}" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Tambah FnB
+                                </a>
+                            </div>
+                        @endif
                     @endif
 
                     @if($transaction->tipe_transaksi === 'postpaid' && $transaction->status_transaksi === 'berjalan')
@@ -282,6 +313,6 @@
         // Initial update when page loads
         document.addEventListener('DOMContentLoaded', updateTimers);
 
-
     </script>
 @endsection
+

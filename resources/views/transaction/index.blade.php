@@ -167,6 +167,8 @@
                                     Paket
                                 @elseif($transaksi->tipe_transaksi === 'custom_package')
                                     Custom Paket - {{ $transaksi->custom_package ? $transaksi->custom_package->nama_paket : 'N/A' }}
+                                @elseif($transaksi->tipe_transaksi === 'fnb_only')
+                                    <span class="badge badge-success"><i class="fas fa-utensils"></i> FnB Saja</span>
                                 @else
                                     Lost Time
                                 @endif

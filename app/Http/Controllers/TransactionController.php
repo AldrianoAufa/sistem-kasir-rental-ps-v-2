@@ -264,8 +264,13 @@ class TransactionController extends Controller
         $tanggal = Carbon::now()->format('Y-m-d');
         $start_time = Carbon::now()->format('H:i');
         
-        // Correctly identify jam_main early for calculations
-        if ($request->tipe_transaksi === 'custom_package') {
+        // Handle FnB Only transactions separately
+        if ($request->tipe_transaksi === 'fnb_only') {
+            // For FnB only, we skip device-related calculations
+            $jam_main_calc = null;
+            $end_time = null;
+        } elseif ($request->tipe_transaksi === 'custom_package') {
+            // Correctly identify jam_main early for calculations
             $customPackage = CustomPackage::with('playstations')->findOrFail($request->custom_package_id);
             // We'll calculate specific duration later based on device, 
             // but for initial end_time estimate we can use the sum
@@ -282,20 +287,23 @@ class TransactionController extends Controller
             $end_time = null;
         }
        
-        // Mengecek apakah waktu mulai dan waktu selesai sudah ada di database
-        $existingTransaction = Transaction::where('device_id', $request->device_id)->whereDate('created_at', $tanggal)
-            ->where(function ($query) use ($start_time, $end_time) {
-                if (!$end_time) return; // Skip if no end time (postpaid)
-                $query->where(function ($query) use ($start_time) {
-                    $query->where('waktu_mulai', '<=', $start_time)
-                        ->where('waktu_Selesai', '>', $start_time);
+        // Skip device conflict check for FnB Only transactions
+        if ($request->tipe_transaksi !== 'fnb_only' && $request->device_id) {
+            // Mengecek apakah waktu mulai dan waktu selesai sudah ada di database
+            $existingTransaction = Transaction::where('device_id', $request->device_id)->whereDate('created_at', $tanggal)
+                ->where(function ($query) use ($start_time, $end_time) {
+                    if (!$end_time) return; // Skip if no end time (postpaid)
+                    $query->where(function ($query) use ($start_time) {
+                        $query->where('waktu_mulai', '<=', $start_time)
+                            ->where('waktu_Selesai', '>', $start_time);
+                    })
+                        ->orWhere(function ($query) use ($end_time) {
+                            $query->where('waktu_mulai', '<', $end_time)
+                                ->where('waktu_Selesai', '>=', $end_time);
+                        });
                 })
-                    ->orWhere(function ($query) use ($end_time) {
-                        $query->where('waktu_mulai', '<', $end_time)
-                            ->where('waktu_Selesai', '>=', $end_time);
-                    });
-            })
-            ->doesntExist();
+                ->doesntExist();
+        }
 
         // Jika waktu mulai dan waktu selesai sudah ada di database, kembalikan response error
         // Removed notification to allow transactions for available devices
@@ -304,7 +312,7 @@ class TransactionController extends Controller
         $validatedData = $request->validate([
             'nama' => 'nullable|string|max:255',
             'no_telepon' => 'nullable|string|max:20',
-            'device_id' => 'required_if:tipe_transaksi,prepaid,postpaid,custom_package|exists:devices,id',
+            'device_id' => 'required_if:tipe_transaksi,prepaid,postpaid,custom_package|nullable|exists:devices,id',
             'playstation_id' => 'nullable|exists:playstations,id',
             'custom_package_id' => 'required_if:tipe_transaksi,custom_package|exists:custom_packages,id',
             'user_id' => 'nullable|exists:users,id',
@@ -313,7 +321,7 @@ class TransactionController extends Controller
             'jam_main_select' => 'nullable|string',
             'total' => 'required_unless:tipe_transaksi,postpaid|nullable',
             'status_transaksi' => 'nullable',
-            'tipe_transaksi' => 'required|in:prepaid,postpaid,custom_package',
+            'tipe_transaksi' => 'required|in:prepaid,postpaid,custom_package,fnb_only',
             'fnb_ids.*' => 'nullable|exists:fnbs,id',
             'fnbs_qty.*' => 'nullable|integer|min:1',
             'fnbs_harga.*' => 'nullable|integer|min:0'
@@ -481,6 +489,34 @@ class TransactionController extends Controller
             
             // For postpaid, total is calculated from FnB items only (no device cost initially)
             $validatedData['total'] = $request->total ?? 0;
+        } elseif ($request->tipe_transaksi === 'fnb_only') {
+            // FnB Only transaction - no device required
+            // Calculate FnB total
+            $fnbTotal = 0;
+            if ($request->has('fnb_ids')) {
+                foreach ($request->fnb_ids as $index => $fnb_id) {
+                    if ($fnb_id && isset($request->fnbs_qty[$index]) && $request->fnbs_qty[$index] > 0) {
+                        $fnb = Fnb::findOrFail($fnb_id);
+                        $harga_jual = $request->fnbs_harga[$index] ?? $fnb->harga_jual;
+                        $fnbTotal += $request->fnbs_qty[$index] * $harga_jual;
+                    }
+                }
+            }
+
+            // Validate at least one FnB item
+            if ($fnbTotal <= 0) {
+                return redirect()->back()->with('gagal', 'Transaksi FnB Saja membutuhkan minimal 1 item FnB.');
+            }
+
+            // Set transaction data for FnB only
+            $validatedData['device_id'] = null;
+            $validatedData['playstation_id'] = null;
+            $validatedData['custom_package_id'] = null;
+            $validatedData['harga'] = 0;
+            $validatedData['jam_main'] = null;
+            $validatedData['waktu_Selesai'] = $start_time; // Immediate completion
+            $validatedData['status_transaksi'] = 'selesai';
+            $validatedData['total'] = $fnbTotal;
         }
 
         // Set user_id if not provided
@@ -588,7 +624,7 @@ class TransactionController extends Controller
      */
     public function edit($id)
     {
-        $transaction = Transaction::with(['device.playstation', 'custom_package'])->findOrFail($id);
+        $transaction = Transaction::with(['device.playstation', 'custom_package', 'transactionFnbs.fnb'])->findOrFail($id);
         
         // Only allow editing unpaid transactions
         if ($transaction->payment_status !== 'unpaid') {
@@ -1167,6 +1203,187 @@ class TransactionController extends Controller
         
         return redirect()->route('transaction.showPayment', $transaction->id_transaksi)
             ->with('success', $totalAdded . ' item pesanan berhasil ditambahkan');
+    }
+
+    /**
+     * Update FnB item quantity in a transaction
+     *
+     * @param Request $request
+     * @param string $transactionId
+     * @param int $fnbItemId
+     * @return \Illuminate\Http\Response
+     */
+    public function updateFnbItem(Request $request, $transactionId, $fnbItemId)
+    {
+        $transaction = Transaction::findOrFail($transactionId);
+        
+        // Only allow editing unpaid transactions
+        if ($transaction->payment_status !== 'unpaid') {
+            return redirect()->back()->with('gagal', 'Hanya transaksi yang belum dibayar yang dapat diedit.');
+        }
+        
+        $transactionFnb = TransactionFnb::where('transaction_id', $transactionId)
+            ->where('id', $fnbItemId)
+            ->firstOrFail();
+        
+        $request->validate([
+            'qty' => 'required|integer|min:1'
+        ]);
+        
+        $newQty = $request->input('qty');
+        $oldQty = $transactionFnb->qty;
+        $fnb = Fnb::findOrFail($transactionFnb->fnb_id);
+        
+        // Calculate quantity difference
+        $qtyDiff = $newQty - $oldQty;
+        
+        // Check stock if increasing quantity and not unlimited
+        if ($qtyDiff > 0 && $fnb->stok != -1) {
+            if ($fnb->stok < $qtyDiff) {
+                return redirect()->back()->with('gagal', 'Stok tidak cukup untuk ' . $fnb->nama);
+            }
+        }
+        
+        try {
+            DB::beginTransaction();
+            
+            // Update stock
+            if ($fnb->stok != -1) {
+                if ($qtyDiff > 0) {
+                    // Increasing quantity - decrease stock
+                    $fnb->decrement('stok', $qtyDiff);
+                    
+                    // Create stock mutation for additional items
+                    StockMutation::create([
+                        'fnb_id' => $fnb->id,
+                        'type' => 'out',
+                        'qty' => $qtyDiff,
+                        'date' => now()->toDateString(),
+                        'note' => 'Penambahan qty transaksi #' . $transactionId
+                    ]);
+                } else if ($qtyDiff < 0) {
+                    // Decreasing quantity - increase stock (return)
+                    $fnb->increment('stok', abs($qtyDiff));
+                    
+                    // Create stock mutation for returned items
+                    StockMutation::create([
+                        'fnb_id' => $fnb->id,
+                        'type' => 'in',
+                        'qty' => abs($qtyDiff),
+                        'date' => now()->toDateString(),
+                        'note' => 'Pengurangan qty transaksi #' . $transactionId
+                    ]);
+                }
+            }
+            
+            // Update transaction FnB quantity
+            $transactionFnb->update(['qty' => $newQty]);
+            
+            // Recalculate transaction total
+            $this->recalculateTransactionTotal($transaction);
+            
+            DB::commit();
+            
+            return redirect()->back()->with('success', 'Jumlah FnB berhasil diupdate.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Update FnB Item Error: ' . $e->getMessage());
+            return redirect()->back()->with('gagal', 'Gagal mengupdate FnB: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete FnB item from a transaction
+     *
+     * @param string $transactionId
+     * @param int $fnbItemId
+     * @return \Illuminate\Http\Response
+     */
+    public function deleteFnbItem($transactionId, $fnbItemId)
+    {
+        $transaction = Transaction::findOrFail($transactionId);
+        
+        // Only allow editing unpaid transactions
+        if ($transaction->payment_status !== 'unpaid') {
+            return redirect()->back()->with('gagal', 'Hanya transaksi yang belum dibayar yang dapat diedit.');
+        }
+        
+        $transactionFnb = TransactionFnb::where('transaction_id', $transactionId)
+            ->where('id', $fnbItemId)
+            ->firstOrFail();
+        
+        $fnb = Fnb::findOrFail($transactionFnb->fnb_id);
+        $qty = $transactionFnb->qty;
+        
+        try {
+            DB::beginTransaction();
+            
+            // Return stock if not unlimited
+            if ($fnb->stok != -1) {
+                $fnb->increment('stok', $qty);
+            }
+            
+            // Create stock mutation for returned items
+            StockMutation::create([
+                'fnb_id' => $fnb->id,
+                'type' => 'in',
+                'qty' => $qty,
+                'date' => now()->toDateString(),
+                'note' => 'Penghapusan FnB dari transaksi #' . $transactionId
+            ]);
+            
+            // Delete the transaction FnB record
+            $transactionFnb->delete();
+            
+            // Recalculate transaction total
+            $this->recalculateTransactionTotal($transaction);
+            
+            DB::commit();
+            
+            return redirect()->back()->with('success', 'FnB berhasil dihapus dari transaksi.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Delete FnB Item Error: ' . $e->getMessage());
+            return redirect()->back()->with('gagal', 'Gagal menghapus FnB: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Recalculate transaction total after FnB changes
+     *
+     * @param Transaction $transaction
+     */
+    private function recalculateTransactionTotal($transaction)
+    {
+        $transaction->refresh();
+        
+        // Get FnB total
+        $fnbTotal = $transaction->transactionFnbs->sum(function($item) {
+            return $item->qty * $item->harga_jual;
+        });
+        
+        // Calculate PS total based on transaction type
+        $psTotal = 0;
+        if ($transaction->tipe_transaksi === 'prepaid') {
+            if ($transaction->device && $transaction->device->playstation) {
+                $playstation = $transaction->device->playstation;
+                $hourlyPrice = $playstation->getPriceForHour($transaction->jam_main);
+                if ($hourlyPrice !== null) {
+                    $psTotal = $hourlyPrice;
+                } else {
+                    $psTotal = ($playstation->harga ?? 0) * ($transaction->jam_main ?? 0);
+                }
+            }
+        } elseif ($transaction->tipe_transaksi === 'custom_package') {
+            if ($transaction->custom_package) {
+                $psTotal = $transaction->custom_package->harga_total;
+                // For custom package, the price already includes FnB from package
+                // So we only add additional FnB items
+            }
+        }
+        // For postpaid, PS total is calculated when ending the transaction
+        
+        $transaction->update(['total' => $psTotal + $fnbTotal]);
     }
 
     /**

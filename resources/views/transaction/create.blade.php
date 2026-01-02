@@ -78,6 +78,12 @@
                                     Custom Paket
                                 </label>
                             </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="tipe_transaksi" id="fnb_only" value="fnb_only" onchange="toggleFields()">
+                                <label class="form-check-label" for="fnb_only">
+                                    <i class="fas fa-utensils text-success"></i> FnB Saja
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -397,19 +403,73 @@
             const isPrepaid = document.getElementById('prepaid').checked;
             const isPostpaid = document.getElementById('postpaid').checked;
             const isCustomPackage = document.getElementById('custom_package').checked;
+            const isFnbOnly = document.getElementById('fnb_only').checked;
             const deviceRow = document.getElementById('device-row');
             const customPackageRow = document.getElementById('custom-package-row');
             const jamMainRow = document.querySelector('.row.mb-2:has(#jam_main)');
             const waktuSelesaiRow = document.querySelector('.row.mb-2:has(#waktu_Selesai)');
             const totalPsRow = document.querySelector('.row.mb-2:has(#total_ps)');
+            const hargaRow = document.querySelector('.row.mb-2:has(#harga)');
             const jamMainInput = document.getElementById('jam_main');
             const bayarBtn = document.getElementById('bayarBtn');
             const hargaLabel = document.querySelector('label[for="harga"]');
             const deviceSelect = document.getElementById('device_id');
             const deviceHelpText = document.getElementById('device-help-text');
+            const playstationTypeRow = document.getElementById('playstation-type-row');
 
-            // Show/hide device and custom package rows
+            // Handle FnB Only mode - hide all device/PS related fields
+            if (isFnbOnly) {
+                if (deviceRow) deviceRow.style.display = 'none';
+                if (customPackageRow) customPackageRow.style.display = 'none';
+                if (jamMainRow) jamMainRow.style.display = 'none';
+                if (waktuSelesaiRow) waktuSelesaiRow.style.display = 'none';
+                if (totalPsRow) totalPsRow.style.display = 'none';
+                if (hargaRow) hargaRow.style.display = 'none';
+                if (playstationTypeRow) playstationTypeRow.style.display = 'none';
+                
+                // Clear device selection
+                deviceSelect.value = '';
+                deviceSelect.removeAttribute('required');
+                
+                // Clear PS-related fields
+                document.getElementById('jam_main').value = '';
+                document.getElementById('jam_main_select').value = '';
+                document.getElementById('custom_jam_main_container').style.display = 'none';
+                document.getElementById('waktu_Selesai').value = '';
+                document.getElementById('total_ps').value = '0';
+                document.getElementById('harga').value = '0';
+                document.getElementById('custom-package-details').style.display = 'none';
+                document.getElementById('custom_package_id').value = '';
+                
+                // Update FnB section title
+                document.getElementById('fnb-section-title').innerHTML = '<i class="fas fa-utensils text-success"></i> FnB Items <span class="text-danger">*</span>';
+                document.getElementById('fnb-section-subtitle').textContent = 'Minimal 1 item FnB diperlukan';
+                
+                // Reset FnB container
+                document.getElementById('fnb-container').innerHTML = '';
+                currentPackageFnbs = null;
+                packageFnbIds.clear();
+                
+                // Add one FnB row by default
+                addFnbItem();
+                
+                // Show Bayar button for FnB only
+                if (bayarBtn) {
+                    bayarBtn.style.display = 'block';
+                    const simpanBtn = document.querySelector('button[value="simpan"]');
+                    if (simpanBtn) simpanBtn.style.flex = '1';
+                }
+                
+                // Set total to FnB total
+                updateFnbTotal();
+                document.getElementById('total').value = document.getElementById('fnb_total').value;
+                
+                return;
+            }
+
+            // Show/hide device and custom package rows for other types
             if (deviceRow) deviceRow.style.display = 'block';
+            if (hargaRow) hargaRow.style.display = 'flex';
             if (customPackageRow) customPackageRow.style.display = isCustomPackage ? 'block' : 'none';
 
             // Handle device selection based on transaction type
@@ -1006,10 +1066,14 @@
         function updateGrandTotal() {
             const isPrepaid = document.getElementById('prepaid').checked;
             const isCustomPackage = document.getElementById('custom_package').checked;
+            const isFnbOnly = document.getElementById('fnb_only').checked;
             const totalPs = parseFloat(document.getElementById('total_ps').value) || 0;
             const totalFnb = parseFloat(document.getElementById('fnb_total').value) || 0;
             
-            if (isCustomPackage) {
+            if (isFnbOnly) {
+                // For FnB only, total is just FnB items
+                document.getElementById('total').value = totalFnb;
+            } else if (isCustomPackage) {
                 // For custom packages, only use package price
                 const packagePrice = parseFloat(document.getElementById('harga').value) || 0;
                 document.getElementById('total').value = packagePrice;
@@ -1391,15 +1455,33 @@
             // Check transaction type
             if (!tipeTransaksi) {
                 console.log('Error: Tipe transaksi not selected');
-                errors.push('Silakan pilih jenis transaksi (Paket, Lost Time, atau Custom Paket)');
+                errors.push('Silakan pilih jenis transaksi (Paket, Lost Time, Custom Paket, atau FnB Saja)');
             }
 
             // Name is optional - will be auto-generated if empty
             // (Removed nama validation check)
 
-            // Check device selection
-            if (!deviceId || deviceId === 'dummy' || deviceId === '') {
+            // Check device selection - skip for FnB Only
+            const isFnbOnly = tipeTransaksi && tipeTransaksi.value === 'fnb_only';
+            if (!isFnbOnly && (!deviceId || deviceId === 'dummy' || deviceId === '')) {
                 errors.push('Silakan pilih perangkat yang tersedia');
+            }
+
+            // For FnB Only - check if at least one FnB item is added
+            if (isFnbOnly) {
+                const fnbContainer = document.getElementById('fnb-container');
+                const fnbItems = fnbContainer ? fnbContainer.querySelectorAll('.fnb-item') : [];
+                let hasFnbItem = false;
+                fnbItems.forEach(item => {
+                    const fnbSelect = item.querySelector('.fnb-select');
+                    const qtyInput = item.querySelector('.fnb-qty');
+                    if (fnbSelect && fnbSelect.value && qtyInput && parseInt(qtyInput.value) > 0) {
+                        hasFnbItem = true;
+                    }
+                });
+                if (!hasFnbItem) {
+                    errors.push('Transaksi FnB Saja membutuhkan minimal 1 item FnB');
+                }
             }
 
             // Type-specific validations
@@ -1447,8 +1529,9 @@
                 }
             }
 
-            // Check total
-            if (!total || total === '0' || isNaN(total)) {
+            // Check total - skip for postpaid (Lost Time) since total is calculated at end
+            const isPostpaid = tipeTransaksi && tipeTransaksi.value === 'postpaid';
+            if (!isPostpaid && !isFnbOnly && (!total || total === '0' || isNaN(total))) {
                 errors.push('Total transaksi harus terisi dengan benar');
             }
 
