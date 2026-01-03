@@ -231,7 +231,7 @@
                             </td>
 
 
-                            @if ((auth()->user()->isAdmin() || auth()->user()->isOwner()) && $transaksi->device)
+                            @if ((auth()->user()->isAdmin() || auth()->user()->isOwner()) && ($transaksi->device || $transaksi->tipe_transaksi === 'fnb_only'))
                                 <td>
                                     <div class="btn-group" role="group" aria-label="Action Buttons">
                                         <a href="{{ route('transaction.show', ['transaction' => $transaksi->id_transaksi]) }}" class="btn btn-info btn-sm" title="Detail">
@@ -261,7 +261,7 @@
                                         <form action="/transaction/{{ $transaksi->id }}/update" method="post" class="d-inline">
                                             @method('put')
                                             @csrf
-                                            <input type="hidden" name="device_id" value="{{ $transaksi->device->id }}">
+                                            <input type="hidden" name="device_id" value="{{ $transaksi->device ? $transaksi->device->id : '' }}">
                                             <input type="hidden" name="status" value="digunakan">
                                             <input type="hidden" name="status_transaksi" value="sukses">
                                             {{-- <button class="btn btn-success btn-sm" onclick="return confirm('Are you sure?')" title="Update Status">

@@ -53,7 +53,10 @@ class DeviceController extends Controller
 
             $newStatus = 'Tersedia';
             if ($transaction) {
-                if ($transaction->tipe_transaksi === 'prepaid') {
+                // If transaction is completed and paid, device should be available
+                if ($transaction->status_transaksi === 'selesai' && $transaction->payment_status === 'paid') {
+                    $newStatus = 'Tersedia';
+                } elseif ($transaction->tipe_transaksi === 'prepaid') {
                     $endTime = $transaction->waktu_Selesai;
                     if ($endTime) {
                         // Get the transaction start time and date

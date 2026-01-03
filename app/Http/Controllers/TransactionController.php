@@ -112,9 +112,11 @@ class TransactionController extends Controller
 
         $transaction->update($updateData);
 
-        // Update device status to available
-        if ($transaction->device) {
-            $transaction->device->update(['status' => 'Tersedia']);
+        // Update device status to available - use direct query to ensure update works
+        if ($transaction->device_id) {
+            \Log::info('Updating device status', ['device_id' => $transaction->device_id, 'transaction_id' => $id]);
+            $updated = Device::where('id', $transaction->device_id)->update(['status' => 'Tersedia']);
+            \Log::info('Device update result', ['rows_affected' => $updated]);
         }
 
         return redirect()->route('transaction.print', ['id' => $transaction->id_transaksi, 'action' => 'payment'])
