@@ -1301,17 +1301,17 @@ class TransactionController extends Controller
      * @param int $fnbItemId
      * @return \Illuminate\Http\Response
      */
-    public function deleteFnbItem($transactionId, $fnbItemId)
+    public function deleteFnbItem($id, $fnbId)
     {
-        $transaction = Transaction::findOrFail($transactionId);
+        $transaction = Transaction::findOrFail($id);
         
         // Only allow editing unpaid transactions
         if ($transaction->payment_status !== 'unpaid') {
             return redirect()->back()->with('gagal', 'Hanya transaksi yang belum dibayar yang dapat diedit.');
         }
         
-        $transactionFnb = TransactionFnb::where('transaction_id', $transactionId)
-            ->where('id', $fnbItemId)
+        $transactionFnb = TransactionFnb::where('transaction_id', $id)
+            ->where('id', $fnbId)
             ->firstOrFail();
         
         $fnb = Fnb::findOrFail($transactionFnb->fnb_id);
@@ -1331,7 +1331,7 @@ class TransactionController extends Controller
                 'type' => 'in',
                 'qty' => $qty,
                 'date' => now()->toDateString(),
-                'note' => 'Penghapusan FnB dari transaksi #' . $transactionId
+                'note' => 'Penghapusan FnB dari transaksi #' . $id
             ]);
             
             // Delete the transaction FnB record

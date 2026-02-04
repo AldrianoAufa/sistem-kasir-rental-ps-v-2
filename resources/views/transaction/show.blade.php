@@ -113,7 +113,7 @@
                                     <tr>
                                         <td><strong>Durasi Saat Ini:</strong></td>
                                         <td>
-                                            <div class="timer" data-start="{{ $transaction->created_at->toDateString() }} {{ $transaction->waktu_mulai }}" data-transaction-id="{{ $transaction->id_transaksi }}">
+                                            <div class="timer" data-start="{{ $transaction->lost_time_start ?? ($transaction->created_at->toDateString() . ' ' . $transaction->waktu_mulai) }}" data-transaction-id="{{ $transaction->id_transaksi }}">
                                                 <span class="timer-display">Lama Main: 00:00:00 (0 jam 0 menit)</span>
                                             </div>
                                         </td>
@@ -288,7 +288,20 @@
                     return;
                 }
 
-                const startTime = new Date(start);
+                // Robust timestamp parsing
+                let startTime;
+                const isoString = start.replace(' ', 'T');
+                startTime = new Date(isoString);
+                
+                if (isNaN(startTime.getTime())) {
+                    startTime = new Date(start);
+                }
+                
+                if (isNaN(startTime.getTime())) {
+                    console.error('Invalid start time:', start);
+                    return;
+                }
+
                 const now = new Date();
                 let diff = Math.floor((now - startTime) / 1000); // difference in seconds
 

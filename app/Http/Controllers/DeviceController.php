@@ -46,8 +46,17 @@ class DeviceController extends Controller
         // Update status for all devices based on transactions today
         $allDevices = Device::all();
         foreach ($allDevices as $device) {
+            // Check for active postpaid transactions (might be from previous days)
             $transaction = Transaction::where('device_id', $device->id)
-                ->whereDate('created_at', $today)
+                ->where(function ($query) use ($today) {
+                    // Include today's transactions
+                    $query->whereDate('created_at', $today)
+                        // OR include any running postpaid transactions from any day
+                        ->orWhere(function ($q) {
+                            $q->where('tipe_transaksi', 'postpaid')
+                                ->where('status_transaksi', 'berjalan');
+                        });
+                })
                 ->latest()
                 ->first();
 
@@ -142,8 +151,15 @@ class DeviceController extends Controller
         
         foreach ($devices as $dev) {
             if ($dev->status === 'Digunakan') {
+                // Check for today's transactions OR running postpaid transactions
                 $transaction = Transaction::where('device_id', $dev->id)
-                    ->whereDate('created_at', $today)
+                    ->where(function ($query) use ($today) {
+                        $query->whereDate('created_at', $today)
+                            ->orWhere(function ($q) {
+                                $q->where('tipe_transaksi', 'postpaid')
+                                    ->where('status_transaksi', 'berjalan');
+                            });
+                    })
                     ->latest()
                     ->first();
                     

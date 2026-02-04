@@ -49,7 +49,14 @@ Route::middleware(['auth', 'check_role:admin,owner'])->group(function () {
     
     // Transaction (with page access check)
     Route::middleware(['check_page_access:transaction'])->group(function () {
+        // FnB item update/delete routes - must be defined before resource
+        Route::put('/transaction/{id}/fnb/{fnbId}', [App\Http\Controllers\TransactionController::class, 'updateFnbItem'])->name('transaction.update-fnb');
+        Route::delete('/transaction/{id}/fnb/{fnbId}', [App\Http\Controllers\TransactionController::class, 'deleteFnbItem'])->name('transaction.delete-fnb');
+        
+        // Transaction resource routes
         Route::resource('/transaction', App\Http\Controllers\TransactionController::class);
+        
+        // Other transaction routes
         Route::get('/transaction/{id}/payment', [App\Http\Controllers\TransactionController::class, 'showPayment'])->name('transaction.showPayment');
         Route::post('/transaction/{id}/process-payment', [App\Http\Controllers\TransactionController::class, 'processPayment'])->name('transaction.processPayment');
         Route::get('/transaction/{id}/print', [App\Http\Controllers\TransactionController::class, 'printReceipt'])->name('transaction.print');
@@ -57,10 +64,6 @@ Route::middleware(['auth', 'check_role:admin,owner'])->group(function () {
         Route::post('/transaction/{id}/end', 'App\Http\Controllers\TransactionController@endTransaction')->name('transaction.end');
         Route::get('/transaction/{id}/add-order', [App\Http\Controllers\TransactionController::class, 'addOrder'])->name('transaction.add-order');
         Route::post('/transaction/{id}/store-order', [App\Http\Controllers\TransactionController::class, 'storeOrder'])->name('transaction.store-order');
-        
-        // FnB item update/delete routes
-        Route::put('/transaction/{id}/fnb/{fnbId}', [App\Http\Controllers\TransactionController::class, 'updateFnbItem'])->name('transaction.update-fnb');
-        Route::delete('/transaction/{id}/fnb/{fnbId}', [App\Http\Controllers\TransactionController::class, 'deleteFnbItem'])->name('transaction.delete-fnb');
     });
 
     // Device (with page access check)

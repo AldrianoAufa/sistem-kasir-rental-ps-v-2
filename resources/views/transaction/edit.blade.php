@@ -221,16 +221,14 @@
                                                                     title="Edit Jumlah">
                                                                     <i class="fas fa-edit"></i>
                                                                 </button>
-                                                                <form action="{{ route('transaction.delete-fnb', ['id' => $transaction->id_transaksi, 'fnbId' => $fnbItem->id]) }}" 
-                                                                      method="POST" 
-                                                                      class="d-inline"
-                                                                      onsubmit="return confirm('Apakah Anda yakin ingin menghapus {{ $fnbItem->fnb->nama }} dari transaksi?')">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit" class="btn btn-sm btn-danger" title="Hapus">
-                                                                        <i class="fas fa-trash"></i>
-                                                                    </button>
-                                                                </form>
+                                                                <button type="button" 
+                                                                        class="btn btn-sm btn-danger delete-fnb" 
+                                                                        title="Hapus"
+                                                                        data-transaction-id="{{ $transaction->id_transaksi }}"
+                                                                        data-fnb-id="{{ $fnbItem->id }}"
+                                                                        data-fnb-name="{{ $fnbItem->fnb->nama }}">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -575,6 +573,46 @@ document.addEventListener('DOMContentLoaded', function() {
             var form = document.getElementById('editFnbForm');
             form.action = '/transaction/' + transactionId + '/fnb/' + fnbId;
         });
+    }
+
+    // Handle FnB delete button clicks
+    function setupDeleteButtons() {
+        document.querySelectorAll('.delete-fnb').forEach(button => {
+            button.addEventListener('click', function() {
+                const transactionId = this.getAttribute('data-transaction-id');
+                const fnbId = this.getAttribute('data-fnb-id');
+                const fnbName = this.getAttribute('data-fnb-name');
+                
+                if (confirm(`Apakah Anda yakin ingin menghapus ${fnbName} dari transaksi?`)) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/transaction/${transactionId}/fnb/${fnbId}`;
+                    
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = '_token';
+                    csrfInput.value = csrfToken;
+                    form.appendChild(csrfInput);
+                    
+                    const methodInput = document.createElement('input');
+                    methodInput.type = 'hidden';
+                    methodInput.name = '_method';
+                    methodInput.value = 'DELETE';
+                    form.appendChild(methodInput);
+                    
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        });
+    }
+
+    // Initialize delete buttons when the document is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupDeleteButtons);
+    } else {
+        setupDeleteButtons();
     }
 </script>
 @endsection

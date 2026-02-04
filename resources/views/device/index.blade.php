@@ -290,25 +290,46 @@
 
         // Function to update postpaid timer (elapsed time from 00:00:00)
         function updatePostpaidTimer(deviceId, lostTimeStart) {
-            // Parse the lost_time_start timestamp
-            const startTimestamp = new Date(lostTimeStart).getTime();
+            // Robust timestamp parsing - handle various formats
+            let startTimestamp;
+            
+            // Try parsing the timestamp
+            if (lostTimeStart) {
+                // Replace space with 'T' for ISO format if needed
+                const isoString = lostTimeStart.replace(' ', 'T');
+                startTimestamp = new Date(isoString).getTime();
+                
+                // Fallback: if parsing failed, try direct parsing
+                if (isNaN(startTimestamp)) {
+                    startTimestamp = new Date(lostTimeStart).getTime();
+                }
+            }
+            
+            // If still invalid, log error and exit
+            if (!startTimestamp || isNaN(startTimestamp)) {
+                console.error(`Invalid timestamp for device ${deviceId}:`, lostTimeStart);
+                return;
+            }
             
             function updateElapsedTime() {
+                const elapsedElement = document.getElementById(`elapsed-time-${deviceId}`);
+                if (!elapsedElement) return; // Element might be removed from DOM
+                
                 // Calculate elapsed time from lost_time_start
                 const now = Date.now();
                 const diffMs = now - startTimestamp;
                 
                 if (diffMs < 0) {
                     // If the start time is in the future, show 00:00:00
-                    document.getElementById(`elapsed-time-${deviceId}`).textContent = '00:00:00';
+                    elapsedElement.textContent = '00:00:00';
                 } else {
-                    // Calculate hours, minutes, seconds
+                    // Calculate hours, minutes, seconds - can handle >24 hours
                     const totalSeconds = Math.floor(diffMs / 1000);
                     const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
                     const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
                     const seconds = (totalSeconds % 60).toString().padStart(2, '0');
                     
-                    document.getElementById(`elapsed-time-${deviceId}`).textContent = `${hours}:${minutes}:${seconds}`;
+                    elapsedElement.textContent = `${hours}:${minutes}:${seconds}`;
                 }
                 
                 // Update every second
