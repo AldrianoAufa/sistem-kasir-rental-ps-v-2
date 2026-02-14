@@ -4,7 +4,10 @@
     width: 250px;
     height: 100vh;
     overflow-y: auto;
-    z-index: 1;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    transition: transform 0.3s ease-in-out;
 }
 
 /* Adjust main content when sidebar is fixed */
@@ -14,15 +17,22 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    transition: all 0.3s;
+    transition: all 0.3s ease-in-out;
 }
 
-/* Ensure proper spacing for mobile view */
+/* Mobile view - sidebar slides in from left */
 @media (max-width: 768px) {
     .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
+        width: 200px;
+        height: 100vh;
+        position: fixed;
+        transform: translateX(0);
+    }
+    
+    /* Hide sidebar by default on mobile */
+    body.sidebar-toggled .sidebar,
+    .sidebar.toggled {
+        transform: translateX(-200px);
     }
     
     #content {

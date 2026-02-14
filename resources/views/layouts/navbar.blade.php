@@ -1,6 +1,6 @@
 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
     <!-- Sidebar Toggle (Topbar) -->
-    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3" onclick="document.body.classList.toggle('sidebar-toggled'); document.querySelector('.sidebar').classList.toggle('toggled');">
         <i class="fa fa-bars"></i>
     </button>
 
@@ -68,9 +68,16 @@
             const now = new Date();
             const wib = formatWIBTime(now);
             
-            // Update time display
-            document.getElementById('wib-time').textContent = wib.time;
-            document.getElementById('wib-date').textContent = wib.date;
+            // Update time display only if elements exist
+            const timeElement = document.getElementById('wib-time');
+            const dateElement = document.getElementById('wib-date');
+            
+            if (timeElement) {
+                timeElement.textContent = wib.time;
+            }
+            if (dateElement) {
+                dateElement.textContent = wib.date;
+            }
         }
         
         // Update time immediately and then every second

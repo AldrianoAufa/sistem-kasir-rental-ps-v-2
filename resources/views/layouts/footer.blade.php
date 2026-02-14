@@ -51,3 +51,7 @@
 <script src="{{ asset('js/demo/chart-area-demo.js') }}"></script>
 <script src="{{ asset('js/demo/chart-pie-demo.js') }}"></script>
 <script src="{{ asset('js/demo/chart-pie-demo2.js') }}"></script>
+
+<!-- Sidebar Toggle Script -->
+<script src="{{ asset('js/sidebar-toggle.js') }}"></script>
+
